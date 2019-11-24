@@ -36,21 +36,26 @@ def init_gen (generation, final_size, n_children, hashed):
 		if (Chem.RDKFingerprint(child) not in hashed):
 			hashed.append(Chem.RDKFingerprint(child))
 			generation.append(child)
+	count = 0
+	for m in generation:
+		w = Chem.SDWriter('gen1/ligand' + str(count) + '.sdf')
+		w.write(m)
+		count = count+ 1
 	img=Draw.MolsToGridImage(generation,molsPerRow=4,subImgSize=(200,200))
 	img.save('generation.png')
 	return generation
 			
 def mutate(mol):
-	rand_op = randint(0,4)
+	rand_op = randint(0,3)
 	if (rand_op == 0):
 		return Chem.RemoveHs(addAtom(mol))
 	elif (rand_op == 1):
 		return Chem.RemoveHs(addBond(mol))
+	# elif (rand_op == 2):
+		# return Chem.RemoveHs(removeAtom(mol))
 	elif (rand_op == 2):
-		return Chem.RemoveHs(removeAtom(mol))
-	elif (rand_op == 3):
 		return Chem.RemoveHs(removeBond(mol))
-	elif (rand_op == 4):
+	elif (rand_op == 3):
 		return Chem.RemoveHs(replaceAtom(mol))
 		
 		
@@ -140,6 +145,7 @@ def removeAtom(mol):
 		return largest_frag
 	return mol
 def removeBond(mol):
+	Chem.Kekulize(mol, clearAromaticFlags=True)
 	bonds = mol.GetBonds()
 	if (len(bonds)>0):
 		r_bond = bonds[randint(0, len(bonds)-1)]
@@ -149,18 +155,21 @@ def removeBond(mol):
 		newMol.UpdatePropertyCache()
 		newMol = Chem.AddHs(newMol)
 		AllChem.Compute2DCoords(newMol)
+		Chem.Kekulize(newMol)
 		frags = Chem.rdmolops.GetMolFrags(newMol,sanitizeFrags=True, asMols=True)
 		largest_frag = frags[0]
 		for mol_frag in frags:
 			if (mol_frag.GetNumAtoms() >= largest_frag.GetNumAtoms()):
 				largest_frag = mol_frag
 		largest_frag.UpdatePropertyCache()
-		AllChem.Compute2DCoords(largest_frag)		
+		AllChem.Compute2DCoords(largest_frag)	
+		Chem.Kekulize(largest_frag)
 		AllChem.EmbedMolecule(largest_frag)
 		Draw.MolToFile(largest_frag, 'test.png')
 		return largest_frag
 	return mol
 def replaceAtom(mol):
+	Chem.Kekulize(mol, clearAromaticFlags=True)
 	atoms = mol.GetAtoms()
 	r_atom = atoms[randint(0, len(atoms)-1)]
 	possible = []
@@ -175,10 +184,12 @@ def replaceAtom(mol):
 	newMol.UpdatePropertyCache()
 	newMol = Chem.AddHs(newMol)
 	AllChem.Compute2DCoords(newMol)
+	Chem.Kekulize(newMol)
 	AllChem.EmbedMolecule(newMol)
 	Draw.MolToFile(newMol, 'test.png')
 	return newMol
-init_mol = Chem.MolFromSmiles("COCOCCOC")
+init_mol = Chem.MolFromSmiles("[nH]1c2c(c(c(CC(=O)O)c1=O)c1ccccc1)cc(Cl)cc2")
+AllChem.EmbedMolecule(init_mol)
 init_generation = [init_mol]
 num_generations = 2;
 final_generation_size = 100
